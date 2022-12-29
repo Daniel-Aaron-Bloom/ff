@@ -37,6 +37,9 @@ use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
 #[cfg_attr(docsrs, doc(cfg(feature = "bits")))]
 pub type FieldBits<V> = BitArray<V, Lsb0>;
 
+macro_rules! declare_field {
+    ($($bound:path),*) => {
+
 /// This trait represents an element of a field.
 pub trait Field:
     Sized
@@ -66,7 +69,8 @@ pub trait Field:
     + MulAssign
     + for<'a> AddAssign<&'a Self>
     + for<'a> SubAssign<&'a Self>
-    + for<'a> MulAssign<&'a Self>
+    + for<'a> MulAssign<&'a Self>$(
+    + $bound)*
 {
     /// The zero element of the field, the additive identity.
     const ZERO: Self;
@@ -191,11 +195,22 @@ pub trait Field:
     }
 }
 
+};
+}
+
+#[cfg(not(feature = "zero"))]
+declare_field! {}
+#[cfg(feature = "zero")]
+declare_field! {zeroize::Zeroize}
+
+macro_rules! declare_prime_field {
+    ($($bound:path),*) => {
+
 /// This represents an element of a non-binary prime field.
 pub trait PrimeField: Field + From<u64> {
     /// The prime field can be converted back and forth into this binary
     /// representation.
-    type Repr: Copy + Default + Send + Sync + 'static + AsRef<[u8]> + AsMut<[u8]>;
+    type Repr: Copy + Default + Send + Sync + 'static + AsRef<[u8]> + AsMut<[u8]>$( + $bound)*;
 
     /// Interpret a string of numbers as a (congruent) prime field element.
     /// Does not accept unnecessary leading zeroes or a blank string.
@@ -349,6 +364,15 @@ pub trait PrimeField: Field + From<u64> {
     /// where `s` is [`Self::S`].
     const DELTA: Self;
 }
+
+
+};
+}
+
+#[cfg(not(feature = "zero"))]
+declare_prime_field! {}
+#[cfg(feature = "zero")]
+declare_prime_field! {zeroize::Zeroize}
 
 /// The subset of prime-order fields such that `(modulus - 1)` is divisible by `N`.
 ///
